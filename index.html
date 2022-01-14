@@ -1,11 +1,275 @@
 <html lang="en">
 <head>
+  <title>A test page</title>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>A Btest page</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">  
   <meta name="description" content="A simple HTML5 Template for new projects.">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <!-- Load plotly.js into the DOM -->
+	<script src='https://cdn.plot.ly/plotly-2.8.3.min.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js'></script>
+  <script language="javascript">
+    const appToken = 'I1c2J7l2ibpOCCLOHAB3WOndx';
+    const mainUrl = "https://health.data.ny.gov/resource/gnzp-ekau.json?$$app_token=" + appToken;
+    const genericQuery = "&$where=UPPER(ccs_diagnosis_description) like '%25CANCER%25'&$limit=100";
+    const numFormat = Intl.NumberFormat();
+
+    const genericDataDump = async () => {
+      fetch(mainUrl + genericQuery)
+        .then(response => response.json())
+        .then(data => {
+          console.log(data);
+        })
+        .catch(console.error);
+    } // end getGenderData() 
+
+    const getAgeGroupData = async () => {
+      fetch(mainUrl + "&$select=age_group,count(age_group)&$where=UPPER(ccs_diagnosis_description) like '%25CANCER%25'&$group=age_group")
+        .then(response => response.json())
+        .then(data => {
+          const yValues = [];
+          const xValues = [];
+          //iterate through object keys
+          data.forEach(function(item) {
+            //get the value of name
+            var countVal = numFormat.format(item.count_age_group);
+            var ageVal = item.age_group;
+            //push the name string in the array
+            yValues.push(countVal);
+            xValues.push(ageVal);
+          });
+          var trace1 = {
+            x: xValues,
+            y: yValues,
+            type: 'bar',
+            text: yValues.map(String),
+            textposition: 'auto',
+            hoverinfo: 'none',
+            marker: {
+              color: 'rgb(158,202,225)',
+              opacity: 0.6,
+              line: {
+                color: 'rgb(8,48,107)',
+                width: 1.5
+              }
+            }
+          };
+          var thisData = [trace1];
+          var layout = {
+            title: 'Global Age Group Report',
+            barmode: 'stack'
+          };
+          $(".ageChart").hide();
+          Plotly.newPlot('ageChartDiv', thisData, layout);
+        })
+        .catch(console.error);
+    } // end getAgeGroupData() 
+
+    const getGenderData = async () => {
+      fetch(mainUrl + "&$select=gender,count(gender)&$where=UPPER(ccs_diagnosis_description) like '%25CANCER%25'&$group=gender")
+        .then(response => response.json())
+        .then(data => {
+          const arrCount = [];
+          const arrValues = [];
+          //iterate through object keys
+          data.forEach(function(item) {
+            //get the value of name
+            var countVal = item.count_gender;
+            var genderVal = item.gender;
+            //push the name string in the array
+            arrCount.push(countVal);
+            arrValues.push(genderVal);
+          });
+          var thisData = [{
+            values: arrCount,
+            labels: arrValues,
+            type: 'pie'
+          }];
+          var layout = {
+            height: 400,
+            width: 500
+          };
+          $(".genderChart").hide();
+          Plotly.newPlot('genderChartDiv', thisData, layout);
+        })
+        .catch(console.error);
+    } // end getGenderData() 
+
+    const getRaceData = async () => {
+      fetch(mainUrl + "&$select=race,age_group,count(*)&$where=UPPER(ccs_diagnosis_description) like '%25CANCER%25'&$group=race,age_group")
+        .then(response => response.json())
+        .then(data => {
+          const thisData = []; 
+          //get unique races for line plots
+          const uniqueArr = [];
+          const distinctArr = [];
+          data.forEach(function(item) {           
+            if(!uniqueArr[item.race]){
+              distinctArr.push(item.race);
+              uniqueArr[item.race] = 1;
+            }
+          });
+          // construct trace array for plots
+          distinctArr.forEach(function(raceItem) {           
+            const yValues = [];
+            const xValues = [];
+            //iterate through object keys
+            data.forEach(function(item) {
+              //get the value of name
+              if(item.race === raceItem){
+                var countVal = item.count;
+                var ageVal = item.age_group;
+                //push the name string in the array
+                yValues.push(countVal);
+                xValues.push(ageVal);
+              }
+            });
+            var trace = {
+              x: xValues,
+              y: yValues,
+              mode: 'Lines',
+              name: raceItem
+            };  
+            thisData.push(trace);    
+          });
+          var layout = {
+            title:'Gobal Race and Age Group Report'
+          };
+          $(".raceLengthChart").hide();
+          Plotly.newPlot('raceLengthChartDiv', thisData, layout);          
+        })
+        .catch(console.error);
+    } // end getRaceData()     
+
+    const getFacilityData = async () => {
+      fetch(mainUrl + "&$select=facility_name,count(facility_name)&$where=UPPER(ccs_diagnosis_description) like '%25CANCER%25'&$group=facility_name")
+        .then(response => response.json())
+        .then(data => {
+          // header values
+          var headerValues = ["Facility","Count"];
+          // cell values
+          var cellValues = [];
+          // construct array for table rows/columns
+          headerValues.forEach(function(facilityItem, index) {           
+            var thisArr = [];
+            if(index===0){
+              //iterate through object keys
+              data.forEach(function(item) {
+                  //push the name string in the array
+                  thisArr.push(item.facility_name)
+              });
+            }
+            if(index===1){           
+              //iterate through object keys
+              data.forEach(function(item) {
+                  //push the name string in the array
+                  thisArr.push(numFormat.format(item.count_facility_name))
+              });              
+            }    
+            cellValues.push(thisArr);    
+          });
+          // create table
+          var table = {
+            type: 'table',
+            columnwidth: [600,100],
+            columnorder: [0,1],
+            header: {
+              values: headerValues,
+              align: "center",
+              line: {width: 1, color: 'rgb(50, 50, 50)'},
+              fill: {color: ['rgb(169,169,169)']},
+              font: {family: "Arial", size: 11, color: "white"}
+            },
+            cells: {
+              values: cellValues,
+              align: ["center", "center"],
+              line: {color: "black", width: 1},
+              fill: {color: ['rgba(228, 222, 249, 0.65)', 'rgba(228, 222, 249, 0.65)']},
+              font: {family: "Arial", size: 10, color: ["black"]}
+            },
+            xaxis: 'x',
+            yaxis: 'y',
+            domain: {x: [0,0.4], y: [0,1]}
+          }
+          var thisData = [table];
+          // define layout
+          var layout = {
+            title: "",
+            plot_bgcolor: 'rgba(228, 222, 249, 0.65)',
+            showlegend: false
+          }
+          $(".facilityChart").hide();
+          Plotly.newPlot('facilityChartDiv', thisData, layout);
+        })
+        .catch(console.error);
+    } // end getFacilityData()     
+
+    $(document).ready(function(){	
+     // genericDataDump();
+      getGenderData();
+      getAgeGroupData();
+      getRaceData(); 
+      getFacilityData();
+		});    
+  </script>	
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css">
 </head>
 <body>
-  <p>this is a test..</p>
+  <div class="jumbotron text-center">
+    <h1>Welcome to my code challenge!</h1>
+    <p>I hope these charts will help our clients to analyze and understand data. Please note that these reports only include Cancer patients.</p>
+    <p><i>Javier Becerril</i></p>
+  </div>
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-12">
+        <h3>Patient Data by Gender</h3>
+        <p>This chart provides information about patients by gender (M=Male, F=Female, U=Unspecified).</p>
+        <div id='genderChartDiv'>
+          <!-- Plotly chart will be drawn inside this DIV -->
+          <div class="spinner-border genderChart" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-12">
+        <h3>Patient Data by Age Group</h3>
+        <p>This chart provides information about patients by Age Group.</p>
+        <div id='ageChartDiv' style="width:500px;">
+          <!-- Plotly chart will be drawn inside this DIV -->
+        </div>
+        <div class="spinner-border ageChart" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-12">
+        <h3>Patient Data by Race and Age Group</h3>
+        <p>This chart provides information about the number of patients by Race and Age Group.</p>
+        <div id='raceLengthChartDiv' style="width:700px;">
+          <!-- Plotly chart will be drawn inside this DIV -->
+        </div>
+        <div class="spinner-border raceLengthChart" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-12">
+        <h3>Patient Data by Facility</h3>
+        <p>This chart provides information about the number of patients by Facility.</p>
+        <div id='facilityChartDiv' style="width:1000px;">
+          <!-- Plotly chart will be drawn inside this DIV -->
+        </div>
+        <div class="spinner-border facilityChart" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+    </div>    
+  </div>
 </body>
 </html>
