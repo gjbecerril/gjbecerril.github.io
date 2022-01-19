@@ -12,16 +12,7 @@
     const appToken = 'I1c2J7l2ibpOCCLOHAB3WOndx';
     const mainUrl = "https://health.data.ny.gov/resource/gnzp-ekau.json?$$app_token=" + appToken;
     const genericQuery = "&$where=UPPER(ccs_diagnosis_description) like '%25CANCER%25'&$limit=100";
-    const numFormat = Intl.NumberFormat();
-
-    const genericDataDump = async () => {
-      fetch(mainUrl + genericQuery)
-        .then(response => response.json())
-        .then(data => {
-          console.log(data);
-        })
-        .catch(console.error);
-    } // end getGenderData() 
+    const numFormat = Intl.NumberFormat(); 
 
     const getAgeGroupData = async () => {
       fetch(mainUrl + "&$select=age_group,count(age_group)&$where=UPPER(ccs_diagnosis_description) like '%25CANCER%25'&$group=age_group")
@@ -205,7 +196,6 @@
     } // end getFacilityData()     
 
     $(document).ready(function(){	
-     // genericDataDump();
       getGenderData();
       getAgeGroupData();
       getRaceData(); 
